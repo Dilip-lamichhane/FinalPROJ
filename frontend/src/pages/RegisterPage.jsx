@@ -1,0 +1,123 @@
+import React, { useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { SignUp, useUser } from '@clerk/clerk-react';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { syncUserWithBackend, clearError } from '../store/slices/authSlice';
+import LoadingSpinner from '../components/LoadingSpinner';
+
+const RegisterPage = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const dispatch = useAppDispatch();
+  const { isSignedIn, user: clerkUser, isLoaded } = useUser();
+  
+  const { isLoading, error } = useAppSelector((state) => state.auth);
+
+  useEffect(() => {
+    if (error) {
+      dispatch(clearError());
+    }
+  }, [dispatch, error]);
+
+  useEffect(() => {
+    const syncUser = async () => {
+      if (isSignedIn && clerkUser && isLoaded) {
+        try {
+          // Sync Clerk user with our backend
+          await dispatch(syncUserWithBackend(clerkUser)).unwrap();
+          
+          // Redirect based on role or intended destination
+          const from = location.state?.from?.pathname;
+          if (from && from !== '/login' && from !== '/register') {
+            navigate(from, { replace: true });
+          } else {
+            navigate('/profile', { replace: true });
+          }
+        } catch (error) {
+          console.error('Failed to sync user with backend:', error);
+        }
+      }
+    };
+
+    syncUser();
+  }, [isSignedIn, clerkUser, isLoaded, dispatch, navigate, location]);
+
+  // Show loading while Clerk is initializing
+  if (!isLoaded || isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  // If already signed in, show loading while syncing
+  if (isSignedIn) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <LoadingSpinner />
+          <p className="mt-4 text-gray-600">Setting up your account...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div className="text-center">
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+            Create your account
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Or{' '}
+            <a
+              href="/login"
+              className="font-medium text-blue-600 hover:text-blue-500"
+            >
+              sign in to your existing account
+            </a>
+          </p>
+        </div>
+        
+        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          <SignUp
+            routing="path"
+            path="/register"
+            signInUrl="/login"
+            afterSignUpUrl="/profile"
+            appearance={{
+              elements: {
+                formButtonPrimary: 'bg-blue-600 hover:bg-blue-700 text-white',
+                footerActionLink: 'text-blue-600 hover:text-blue-500',
+                formFieldInput: 'border-gray-300 focus:border-blue-500 focus:ring-blue-500',
+              },
+            }}
+          />
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md">
+            {error}
+          </div>
+        )}
+
+        <div className="text-center">
+          <p className="text-sm text-gray-600">
+            By creating an account, you agree to our{' '}
+            <a href="/terms" className="text-blue-600 hover:text-blue-500">
+              Terms of Service
+            </a>{' '}
+            and{' '}
+            <a href="/privacy" className="text-blue-600 hover:text-blue-500">
+              Privacy Policy
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default RegisterPage;
