@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { fetchShops } from '../store/slices/shopsSlice';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -71,9 +72,12 @@ const Navigation = () => {
               </SignInButton>
             </SignedOut>
             <SignedIn>
-              <button className="text-gray-700 hover:text-blue-600 font-medium px-4 py-2 rounded-xl hover:bg-white/60 backdrop-blur-sm transition-all duration-200">
-                Dashboard
-              </button>
+              <Link 
+                to="/shopkeeper" 
+                className="text-gray-700 hover:text-blue-600 font-medium px-4 py-2 rounded-xl hover:bg-white/60 backdrop-blur-sm transition-all duration-200"
+              >
+                Shopkeeper Portal
+              </Link>
               <UserButton 
                 appearance={{
                   elements: {
