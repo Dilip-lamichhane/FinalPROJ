@@ -3,7 +3,7 @@
 **KhojHub** is a comprehensive location-based business discovery platform that connects customers with local businesses through radius-based search, real-time product availability, and community-driven reviews. Built with modern web technologies, it serves as a bridge between local businesses and their customers.
 
 ## 🚀 Live Demo
-- **Frontend**: http://localhost:5174/admin (Admin Portal)
+- **Frontend**: http://localhost:5173/admin (Admin Portal)
 - **Backend API**: http://localhost:5000/api/v1/health
 - **Development**: Both frontend and backend servers running concurrently
 
