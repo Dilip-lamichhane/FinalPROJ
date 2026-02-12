@@ -78,6 +78,12 @@ const Navigation = () => {
               >
                 Shopkeeper Portal
               </Link>
+              <Link 
+                to="/admin" 
+                className="text-gray-700 hover:text-blue-600 font-medium px-4 py-2 rounded-xl hover:bg-white/60 backdrop-blur-sm transition-all duration-200"
+              >
+                Admin Portal
+              </Link>
               <UserButton 
                 appearance={{
                   elements: {
@@ -98,7 +104,7 @@ const HeroSection = ({ searchQuery, setSearchQuery, selectedCategory, setSelecte
   return (
     <section className="min-h-screen bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center relative overflow-hidden">
       {/* Animated Background Elements */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-100/30 via-purple-100/30 to-pink-100/30"></div>
+      <div className="absolute inset-0 bg-linear-to-br from-blue-100/30 via-purple-100/30 to-pink-100/30"></div>
       <div className="absolute top-20 left-10 w-72 h-72 bg-blue-200/20 rounded-full blur-3xl animate-pulse"></div>
       <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-200/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
       

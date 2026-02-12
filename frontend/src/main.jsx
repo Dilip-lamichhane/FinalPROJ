@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Provider } from 'react-redux'
 import { ClerkProvider } from '@clerk/clerk-react'
+import { ThemeProvider } from './contexts/ThemeContext.jsx'
 import { store } from './store/store.js'
 import './index.css'
 import App from './App.jsx'
@@ -17,7 +18,9 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
       <Provider store={store}>
-        <App />
+        <ThemeProvider>
+          <App />
+        </ThemeProvider>
       </Provider>
     </ClerkProvider>
   </StrictMode>,
