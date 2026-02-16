@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { fetchShops } from '../store/slices/shopsSlice';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -100,7 +100,7 @@ const Navigation = () => {
 };
 
 // Premium Hero Section
-const HeroSection = ({ searchQuery, setSearchQuery, selectedCategory, setSelectedCategory, selectedRadius, setSelectedRadius, categories }) => {
+const HeroSection = ({ searchQuery, setSearchQuery, selectedCategory, setSelectedCategory, selectedRadius, setSelectedRadius, categories, onStartExploring }) => {
   return (
     <section className="min-h-screen bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center relative overflow-hidden">
       {/* Animated Background Elements */}
@@ -176,14 +176,18 @@ const HeroSection = ({ searchQuery, setSearchQuery, selectedCategory, setSelecte
             
             {/* Search Button */}
             <SignedOut>
-              <SignInButton mode="modal">
-                <button className="w-full bg-linear-to-r from-blue-600 to-purple-600 text-white py-4 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300">
-                  Start Exploring
-                </button>
-              </SignInButton>
+              <button
+                onClick={onStartExploring}
+                className="w-full bg-linear-to-r from-blue-600 to-purple-600 text-white py-4 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300"
+              >
+                Start Exploring
+              </button>
             </SignedOut>
             <SignedIn>
-              <button className="w-full bg-linear-to-r from-blue-600 to-purple-600 text-white py-4 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300">
+              <button
+                onClick={onStartExploring}
+                className="w-full bg-linear-to-r from-blue-600 to-purple-600 text-white py-4 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300"
+              >
                 Search Now
               </button>
             </SignedIn>
@@ -534,6 +538,7 @@ const HomePage = () => {
   const dispatch = useAppDispatch();
   const { shops, loading, error } = useAppSelector((state) => state.shops);
   const { user } = useUser();
+  const navigate = useNavigate();
   
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -626,6 +631,25 @@ const HomePage = () => {
     setSelectedCategory(categoryId);
   };
 
+  const handleStartExploring = () => {
+    const selectedCategoryData = categories.find((category) => category.id === selectedCategory);
+    const navigationState = selectedCategory && selectedCategory !== 'all'
+      ? {
+          category: selectedCategoryData?.name || 'Local Businesses',
+          categoryId: selectedCategory,
+          searchQuery,
+          radius: selectedRadius
+        }
+      : {
+          category: 'All Categories',
+          categoryId: 'all',
+          searchQuery,
+          radius: selectedRadius
+        };
+
+    navigate('/map', { state: navigationState });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -662,6 +686,7 @@ const HomePage = () => {
         selectedRadius={selectedRadius}
         setSelectedRadius={setSelectedRadius}
         categories={categories}
+        onStartExploring={handleStartExploring}
       />
       <MapPreviewSection selectedRadius={selectedRadius} />
       <CategoryGrid categories={categories} onCategorySelect={handleCategorySelect} />

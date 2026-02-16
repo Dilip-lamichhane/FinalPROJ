@@ -8,6 +8,7 @@ import ProfilePage from './pages/ProfilePage.jsx';
 import ShopDetailsPage from './pages/ShopDetailsPage.jsx';
 import ShopkeeperDashboard from './pages/ShopkeeperDashboard.jsx';
 import AdminPortal from './pages/AdminPortal.jsx';
+import CategoryMapPageScrollable from './pages/CategoryMapPageScrollable.jsx';
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
           <Route path="/shop/:id" element={<ShopDetailsPage />} />
           <Route path="/shopkeeper" element={<ShopkeeperDashboard />} />
           <Route path="/admin" element={<AdminPortal />} />
+          <Route path="/map" element={<CategoryMapPageScrollable />} />
         </Routes>
       </Router>
     </ThemeProvider>
