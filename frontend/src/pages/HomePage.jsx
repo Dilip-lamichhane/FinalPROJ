@@ -13,6 +13,7 @@ import {
 // Glassmorphism Navigation Component
 const Navigation = () => {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [locationLabel, setLocationLabel] = useState('Detecting location...');
 
   useEffect(() => {
     const handleScroll = () => {
@@ -20,6 +21,62 @@ const Navigation = () => {
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+    if (!navigator.geolocation) {
+      setLocationLabel('Location unavailable');
+      return () => {};
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        let label = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
+            {
+              headers: {
+                'Accept-Language': 'en'
+              }
+            }
+          );
+          if (response.ok) {
+            const data = await response.json();
+            const address = data?.address || {};
+            const city = address.city || address.town || address.village || address.state;
+            const country = address.country;
+            if (city && country) {
+              label = `${city}, ${country}`;
+            } else if (country) {
+              label = country;
+            }
+          }
+        } catch {
+          label = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+        }
+
+        if (isActive) {
+          setLocationLabel(label);
+        }
+      },
+      () => {
+        if (isActive) {
+          setLocationLabel('Location unavailable');
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000
+      }
+    );
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   return (
@@ -51,7 +108,7 @@ const Navigation = () => {
             </svg>
             <div className="flex flex-col">
               <span className="text-xs text-blue-600 font-medium">Current Location</span>
-              <span className="text-sm font-semibold text-blue-800">Mumbai, India</span>
+              <span className="text-sm font-semibold text-blue-800">{locationLabel}</span>
             </div>
           </div>
 
