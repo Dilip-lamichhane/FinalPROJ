@@ -3,9 +3,11 @@
 **KhojHub** is a comprehensive location-based business discovery platform that connects customers with local businesses through radius-based search, real-time product availability, and community-driven reviews. Built with modern web technologies, it serves as a bridge between local businesses and their customers.
 
 ## 🚀 Live Demo
-- **Frontend**: http://localhost:5173/admin (Admin Portal)
+- **Frontend**: http://localhost:5173/ (Home)
+- **Map (Leaflet + Supabase)**: http://localhost:5173/map
+- **Admin Portal**: http://localhost:5173/admin
 - **Backend API**: http://localhost:5000/api/v1/health
-- **Development**: Both frontend and backend servers running concurrently
+- **Development**: Run frontend + backend in separate terminals
 
 ## ✨ Key Features
 
@@ -13,7 +15,7 @@
 - **Radius-Based Search**: Find businesses within your specified distance
 - **Category Filtering**: Browse by business categories (Restaurants, Electronics, Fitness, etc.)
 - **Geospatial Intelligence**: Location-aware recommendations using PostGIS
-- **Real-Time Availability**: Live product and service status updates
+- **Product Availability Search (Supabase)**: Search a product and only shops that carry it show on the map
 
 ### 🏪 Business Management
 - **Shop Registration**: Complete business profile setup with location
@@ -34,6 +36,7 @@
 - **Admin Dashboard**: shadcn-admin inspired modern interface
 - **Loading States**: Smooth transitions and loading indicators
 - **Accessibility**: ARIA labels and keyboard navigation support
+- **Catalog Sidebar (Map)**: Click a shop marker → view that shop’s catalog and search within it
 
 ### 🔐 Security & Authentication
 - **Clerk Integration**: Enterprise-grade authentication system
@@ -55,7 +58,8 @@ React 19.2.0 + Vite → Redux Toolkit → Tailwind CSS → Clerk Auth
 - **Tailwind CSS 4.1.18**: Utility-first CSS framework
 - **Vite**: Lightning-fast build tool and dev server
 - **Clerk**: Complete authentication solution
-- **Google Maps**: Geospatial mapping and location services
+- **Leaflet**: Implemented map for `/map` (Supabase shops + catalog)
+- **Google Maps**: Planned/partial integration for advanced geospatial features
 - **Recharts**: Data visualization and analytics charts
 - **Lucide React**: Beautiful icon library
 
@@ -92,10 +96,11 @@ Node.js + Express.js → MongoDB + Mongoose → JWT Auth → Supabase
 ## 📊 Data Statistics
 
 ### Seeded Database (Ready for Testing)
-- **20 Shops** across 10 different business categories
-- **200 Products** (10 products per shop)
-- **10 Categories**: Restaurant, Electronics, Fitness, Health/Medicine, Automobile, Grocery, Clothing, Books, Pet Supplies, Gardening
-- **Geographic Coverage**: All shops located in Lalitpur area, Nepal
+- **50 Shops** across 5 business categories
+- **~500 Products** total (**10–15 items per shop**, variable)
+- **Categories**: Restaurant, Electronics, Fitness, Health/Medicine, Automobile
+- **Catalog realism**: ~70% items common within category + some unique/rare per shop
+- **Geographic Coverage**: Demo coordinates around Lalitpur/Kathmandu area
 - **PostGIS Integration**: Full spatial data support with radius queries
 
 ### Sample Business Categories
@@ -104,7 +109,6 @@ Node.js + Express.js → MongoDB + Mongoose → JWT Auth → Supabase
 3. **Fitness**: Iron Temple Gym & Shop, Zen Yoga Studio
 4. **Health**: Nepal Pharma Distributors, Herbal Life Store
 5. **Automobile**: Mahindra Auto Parts, Hero Bike Zone
-6. **And More**: Grocery, Clothing, Books, Pet Supplies, Gardening
 
 ## 🚀 Quick Start Guide
 
@@ -125,7 +129,15 @@ cd DEFENCE
 
 2. **Install dependencies**
 ```bash
-# Install all dependencies (root, frontend, backend)
+# Root (seeder utilities)
+npm install
+
+# Backend
+cd backend
+npm install
+
+# Frontend
+cd ../frontend
 npm install
 ```
 
@@ -146,22 +158,23 @@ SUPABASE_ANON_KEY=your_supabase_key
 
 4. **Database Setup**
 ```bash
-# Run Supabase schema setup
-cd backend
+# Verify Supabase schema exists (runs against your Supabase project)
+cd ..
 node check-schema.js
 
-# Seed the database with sample data
-node supabase-seeder-expanded.js
+# Seed Supabase with shops + products (50 shops, ~500 products)
+npm run seed
 ```
 
 5. **Start Development Servers**
 ```bash
-# Start both frontend and backend concurrently
+# Backend (http://localhost:5000)
+cd backend
 npm run dev
 
-# Or start individually
-npm run frontend  # Frontend on http://localhost:5174
-npm run backend   # Backend on http://localhost:5000
+# Frontend (http://localhost:5173)
+cd ../frontend
+npm run dev
 ```
 
 ## 🎯 Development Workflow
@@ -214,6 +227,15 @@ npm run backend   # Backend on http://localhost:5000
 - `POST /api/v1/reviews` - Create new review
 - `PUT /api/v1/reviews/:id` - Update review
 - `DELETE /api/v1/reviews/:id` - Delete review
+
+### Supabase (Shops + Products)
+- `GET /api/v1/supabase/health` - Supabase connectivity check
+- `GET /api/v1/supabase/shops` - Get Supabase shops
+  - Query params: `limit`, `offset`, `category`, `product`
+  - Example: `/api/v1/supabase/shops?product=thermometer`
+- `GET /api/v1/supabase/shops/:shopId/products` - Get catalog for a Supabase shop
+  - Query param: `q` (optional search inside the shop catalog)
+  - Example: `/api/v1/supabase/shops/12/products?q=mask`
 
 ## 🎨 UI Components
 

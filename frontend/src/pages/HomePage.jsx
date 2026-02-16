@@ -7,13 +7,11 @@ import {
   SignedIn, 
   SignedOut, 
   SignInButton, 
-  UserButton,
-  useUser
+  UserButton
 } from '@clerk/clerk-react';
 
 // Glassmorphism Navigation Component
 const Navigation = () => {
-  const { user } = useUser();
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -536,8 +534,7 @@ const ConversionFooter = () => {
 // Main HomePage Component
 const HomePage = () => {
   const dispatch = useAppDispatch();
-  const { shops, loading, error } = useAppSelector((state) => state.shops);
-  const { user } = useUser();
+  const { loading, error } = useAppSelector((state) => state.shops);
   const navigate = useNavigate();
   
   // Search state

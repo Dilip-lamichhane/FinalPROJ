@@ -1,11 +1,16 @@
-const { createClient } = require('@supabase/supabase-js');
+let createClient;
+try {
+    ({ createClient } = require('@supabase/supabase-js'));
+} catch (error) {
+    ({ createClient } = require('./backend/node_modules/@supabase/supabase-js'));
+}
 
 // Supabase configuration
-const SUPABASE_URL = 'https://qbimoqxwrcqamnghiear.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFiaW1vcXh3cmNxYW1uZ2hpZWFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NzQ4ODIsImV4cCI6MjA4NjQ1MDg4Mn0.EV4ZIxOVFZwy4aL1kfUO8imV4S_tZ8Hb5p8SEHtvI1E';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://qbimoqxwrcqamnghiear.supabase.co';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFiaW1vcXh3cmNxYW1uZ2hpZWFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NzQ4ODIsImV4cCI6MjA4NjQ1MDg4Mn0.EV4ZIxOVFZwy4aL1kfUO8imV4S_tZ8Hb5p8SEHtvI1E';
 
 // Raw data from prompt.md
-const rawData = [
+const baseData = [
   {
     "id": 1,
     "name": "The Lazy Griller",
@@ -197,6 +202,359 @@ const rawData = [
     ]
   }
 ];
+
+const buildProducts = (templates, shopId, variation) =>
+  Array.from({ length: 10 }, (_, index) => {
+    const template = templates[(variation + index) % templates.length];
+    return {
+      id: shopId * 1000 + index + 1,
+      name: template.name,
+      price: Math.round(template.basePrice + variation * 20 + index * 7),
+    };
+  });
+
+const generateAdditionalData = () => {
+  const restaurantProducts = [
+    { name: 'Chicken Mo:Mo (Steam)', basePrice: 180 },
+    { name: 'Chicken Mo:Mo (Fried)', basePrice: 220 },
+    { name: 'Veg Chowmein', basePrice: 160 },
+    { name: 'Chicken Fried Rice', basePrice: 240 },
+    { name: 'Thakali Set', basePrice: 420 },
+    { name: 'Paneer Tikka', basePrice: 360 },
+    { name: 'Buff Sekuwa Platter', basePrice: 380 },
+    { name: 'Chicken Thukpa', basePrice: 260 },
+    { name: 'Himalayan Pizza (Medium)', basePrice: 520 },
+    { name: 'Masala Tea', basePrice: 60 },
+    { name: 'Cold Coffee', basePrice: 180 },
+    { name: 'Lassi', basePrice: 140 },
+  ];
+
+  const electronicsProducts = [
+    { name: 'Wireless Earbuds', basePrice: 3200 },
+    { name: 'Smartwatch', basePrice: 5400 },
+    { name: 'USB-C Fast Charger', basePrice: 1300 },
+    { name: 'WiFi Router (Dual Band)', basePrice: 4200 },
+    { name: 'External SSD 512GB', basePrice: 8900 },
+    { name: 'Mechanical Keyboard', basePrice: 4700 },
+    { name: 'Gaming Mouse', basePrice: 2100 },
+    { name: '27-inch Monitor', basePrice: 23000 },
+    { name: 'Bluetooth Speaker', basePrice: 3900 },
+    { name: 'Smart LED Bulb', basePrice: 900 },
+    { name: 'Webcam 1080p', basePrice: 3200 },
+    { name: 'Power Bank 20000mAh', basePrice: 3600 },
+  ];
+
+  const fitnessProducts = [
+    { name: 'Daily Pass', basePrice: 250 },
+    { name: 'Monthly Membership', basePrice: 2200 },
+    { name: 'Quarterly Membership', basePrice: 5800 },
+    { name: 'Personal Training Session', basePrice: 1200 },
+    { name: 'Whey Protein 1kg', basePrice: 4600 },
+    { name: 'Creatine 300g', basePrice: 2800 },
+    { name: 'Yoga Mat', basePrice: 1200 },
+    { name: 'Resistance Bands Set', basePrice: 900 },
+    { name: 'Jump Rope', basePrice: 550 },
+    { name: 'Shaker Bottle', basePrice: 450 },
+    { name: 'Gym Gloves', basePrice: 750 },
+    { name: 'Foam Roller', basePrice: 1400 },
+  ];
+
+  const healthProducts = [
+    { name: 'Paracetamol 500mg (10 tabs)', basePrice: 60 },
+    { name: 'Ibuprofen 400mg (10 tabs)', basePrice: 90 },
+    { name: 'Vitamin C 1000mg (10 tabs)', basePrice: 160 },
+    { name: 'Antacid (10 tabs)', basePrice: 80 },
+    { name: 'Digital Thermometer', basePrice: 520 },
+    { name: 'Hand Sanitizer 500ml', basePrice: 320 },
+    { name: 'N95 Mask (5 pcs)', basePrice: 260 },
+    { name: 'First Aid Kit', basePrice: 900 },
+    { name: 'Blood Pressure Monitor', basePrice: 2600 },
+    { name: 'Bandage Roll', basePrice: 55 },
+    { name: 'Antiseptic Liquid', basePrice: 130 },
+    { name: 'Glucose Powder 500g', basePrice: 240 },
+  ];
+
+  const automobileProducts = [
+    { name: 'Engine Oil 5W30 (1L)', basePrice: 950 },
+    { name: 'Brake Pads (Front)', basePrice: 2600 },
+    { name: 'Air Filter', basePrice: 650 },
+    { name: 'Oil Filter', basePrice: 520 },
+    { name: 'Car Battery 60Ah', basePrice: 8800 },
+    { name: 'Tire Inflator (Portable)', basePrice: 2100 },
+    { name: 'Car Shampoo 500ml', basePrice: 480 },
+    { name: 'Microfiber Cloth Set', basePrice: 320 },
+    { name: 'LED Headlight Bulb', basePrice: 1600 },
+    { name: 'Bike Chain Lube', basePrice: 380 },
+    { name: 'Helmet (Full Face)', basePrice: 4200 },
+    { name: 'Spark Plug', basePrice: 170 },
+  ];
+
+  const configs = [
+    {
+      category: 'Restaurant',
+      startId: 11,
+      count: 8,
+      baseLat: 27.686,
+      baseLng: 85.318,
+      areas: ['Pulchowk, Lalitpur', 'Kupondole, Lalitpur', 'Jawalakhel, Lalitpur', 'Patan Durbar Sq., Lalitpur', 'Sanepa, Lalitpur'],
+      names: [
+        'Himalayan Bistro',
+        'Spice Route Kitchen',
+        'Patan Courtyard Cafe',
+        'Everest Thakali House',
+        'Momo Junction',
+        'Lalitpur Street Eats',
+        'Garden Grill & Cafe',
+        'Kathmandu Fusion Plate',
+      ],
+      products: restaurantProducts,
+    },
+    {
+      category: 'Electronics',
+      startId: 19,
+      count: 8,
+      baseLat: 27.707,
+      baseLng: 85.315,
+      areas: ['New Road, Kathmandu', 'Putalisadak, Kathmandu', 'Kamaladi, Kathmandu', 'Baneshwor, Kathmandu', 'Thamel, Kathmandu'],
+      names: [
+        'Gadget Galaxy',
+        'NeoTech Center',
+        'Pixel Point Electronics',
+        'Circuit House',
+        'SmartCart Devices',
+        'Himalayan Gadgets',
+        'CityTech Hub',
+        'ElectroMart Nepal',
+      ],
+      products: electronicsProducts,
+    },
+    {
+      category: 'Fitness',
+      startId: 27,
+      count: 8,
+      baseLat: 27.666,
+      baseLng: 85.338,
+      areas: ['Satdobato, Lalitpur', 'Hattiban, Lalitpur', 'Bhaisepati, Lalitpur', 'Imadol, Lalitpur', 'Gwarko, Lalitpur'],
+      names: [
+        'Pulse Fitness Club',
+        'Peak Strength Gym',
+        'Lotus Yoga & Wellness',
+        'CoreFit Training Studio',
+        'IronHouse Gym',
+        'FlexNation Fitness',
+        'ZenFlow Yoga Studio',
+        'PowerZone Gym',
+      ],
+      products: fitnessProducts,
+    },
+    {
+      category: 'Health/Medicine',
+      startId: 35,
+      count: 8,
+      baseLat: 27.704,
+      baseLng: 85.332,
+      areas: ['Baneshwor, Kathmandu', 'Koteshwor, Kathmandu', 'Chabahil, Kathmandu', 'Kalanki, Kathmandu', 'Balaju, Kathmandu'],
+      names: [
+        'CityCare Pharmacy',
+        'GreenCross Medical Store',
+        'Himal Med Supplies',
+        'Wellness Health Mart',
+        'Metro Pharmacy',
+        'LifeLine Pharma',
+        'Prime Health Distributors',
+        'CarePlus Pharmacy',
+      ],
+      products: healthProducts,
+    },
+    {
+      category: 'Automobile',
+      startId: 43,
+      count: 8,
+      baseLat: 27.677,
+      baseLng: 85.305,
+      areas: ['Kalanki, Kathmandu', 'Ekantakuna, Lalitpur', 'Balkhu, Kathmandu', 'Teku, Kathmandu', 'Sitapaila, Kathmandu'],
+      names: [
+        'AutoPro Spares',
+        'DriveLine Auto Parts',
+        'MotoHub Nepal',
+        'RoadReady Accessories',
+        'Speedy Service Parts',
+        'GearBox Auto Store',
+        'WheelWorks Supplies',
+        'PitStop Auto Mart',
+      ],
+      products: automobileProducts,
+    },
+  ];
+
+  const generated = [];
+  for (const config of configs) {
+    for (let i = 0; i < config.count; i += 1) {
+      const shopId = config.startId + i;
+      const lat = Number((config.baseLat + i * 0.0021).toFixed(6));
+      const lng = Number((config.baseLng + ((i % 5) - 2) * 0.0017).toFixed(6));
+      generated.push({
+        id: shopId,
+        name: config.names[i % config.names.length],
+        category: config.category,
+        address: config.areas[i % config.areas.length],
+        coordinates: { lat, lng },
+        products: buildProducts(config.products, shopId, i),
+      });
+    }
+  }
+
+  return generated;
+};
+
+const hashStringToUint32 = (value) => {
+  const str = String(value ?? '');
+  let hash = 2166136261;
+  for (let i = 0; i < str.length; i += 1) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+};
+
+const mulberry32 = (seed) => {
+  let t = seed >>> 0;
+  return () => {
+    t += 0x6D2B79F5;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+};
+
+const distributeProducts = (shops) => {
+  const byCategory = new Map();
+
+  for (const shop of shops) {
+    const category = shop.category || 'Uncategorized';
+    const list = byCategory.get(category) || [];
+    list.push(shop);
+    byCategory.set(category, list);
+  }
+
+  const output = [];
+
+  for (const [category, categoryShops] of byCategory.entries()) {
+    const productStats = new Map();
+
+    for (const shop of categoryShops) {
+      for (const product of shop.products || []) {
+        const name = String(product?.name ?? '').trim();
+        if (!name) continue;
+        const price = Number(product?.price);
+        const entry = productStats.get(name) || { name, prices: [], count: 0 };
+        if (Number.isFinite(price)) entry.prices.push(price);
+        entry.count += 1;
+        productStats.set(name, entry);
+      }
+    }
+
+    const sortedByCommon = Array.from(productStats.values())
+      .map((p) => {
+        const avg =
+          p.prices.length > 0
+            ? p.prices.reduce((sum, v) => sum + v, 0) / p.prices.length
+            : 0;
+        return {
+          name: p.name,
+          basePrice: Math.max(1, Math.round(avg || 0)),
+          count: p.count,
+        };
+      })
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+
+    const corePool = sortedByCommon.slice(0, Math.min(15, sortedByCommon.length));
+    const rarePool = sortedByCommon.filter((p) => p.count <= 1);
+    const uniquePool =
+      rarePool.length > 0 ? rarePool : sortedByCommon.slice(-Math.min(15, sortedByCommon.length));
+
+    const uniqueAssignments = new Map();
+    for (const item of uniquePool) {
+      const h = hashStringToUint32(`${category}|${item.name}`);
+      const a = h % categoryShops.length;
+      const b = (a + 1 + (h % Math.max(1, categoryShops.length - 1))) % categoryShops.length;
+      const shopsForItem = h % 3 === 0 && categoryShops.length > 1 ? [a, b] : [a];
+      uniqueAssignments.set(item.name, shopsForItem);
+    }
+
+    for (let shopIndex = 0; shopIndex < categoryShops.length; shopIndex += 1) {
+      const shop = categoryShops[shopIndex];
+      const seed = hashStringToUint32(`${category}|${shop.name}|${shopIndex}`);
+      const rng = mulberry32(seed);
+
+      const targetCount = 10 + (seed % 6);
+      const commonCount = Math.max(1, Math.round(targetCount * 0.7));
+      const uniqueTarget = Math.max(0, targetCount - commonCount);
+
+      const chosen = new Map();
+
+      const rotatedCore =
+        corePool.length === 0
+          ? []
+          : corePool
+              .slice((shopIndex * 2) % corePool.length)
+              .concat(corePool.slice(0, (shopIndex * 2) % corePool.length));
+
+      for (const item of rotatedCore) {
+        if (chosen.size >= commonCount) break;
+        chosen.set(item.name, item);
+      }
+
+      const eligibleUnique = uniquePool.filter((p) => {
+        const shopsForItem = uniqueAssignments.get(p.name) || [];
+        return shopsForItem.includes(shopIndex);
+      });
+      const rotatedUnique =
+        eligibleUnique.length === 0
+          ? []
+          : eligibleUnique
+              .slice((shopIndex * 3) % eligibleUnique.length)
+              .concat(eligibleUnique.slice(0, (shopIndex * 3) % eligibleUnique.length));
+
+      for (const item of rotatedUnique) {
+        if (chosen.size >= commonCount + uniqueTarget) break;
+        chosen.set(item.name, item);
+      }
+
+      const rotatedAll =
+        sortedByCommon.length === 0
+          ? []
+          : sortedByCommon
+              .slice((shopIndex * 5) % sortedByCommon.length)
+              .concat(sortedByCommon.slice(0, (shopIndex * 5) % sortedByCommon.length));
+
+      for (const item of rotatedAll) {
+        if (chosen.size >= targetCount) break;
+        if (chosen.has(item.name)) continue;
+        if (rng() < 0.25) continue;
+        chosen.set(item.name, item);
+      }
+
+      for (const item of rotatedAll) {
+        if (chosen.size >= targetCount) break;
+        if (chosen.has(item.name)) continue;
+        chosen.set(item.name, item);
+      }
+
+      const products = Array.from(chosen.values()).slice(0, targetCount).map((item) => {
+        const priceFactor = 0.9 + rng() * 0.25;
+        const price = Math.max(1, Math.round(item.basePrice * priceFactor));
+        return { name: item.name, price };
+      });
+
+      output.push({ ...shop, products });
+    }
+  }
+
+  return output;
+};
+
+const rawData = distributeProducts(baseData.concat(generateAdditionalData()));
 
 // Initialize Supabase client
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

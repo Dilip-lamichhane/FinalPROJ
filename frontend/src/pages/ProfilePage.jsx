@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { updateUserProfile } from '../store/slices/authSlice';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -7,16 +7,8 @@ const ProfilePage = () => {
   const dispatch = useAppDispatch();
   const { user, loading, error } = useAppSelector((state) => state.auth);
   
-  const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    firstName: '',
-    lastName: '',
-    phone: '',
-    address: '',
-  });
-  
   const [isEditing, setIsEditing] = useState(false);
+  const [draftFormData, setDraftFormData] = useState(null);
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -24,22 +16,20 @@ const ProfilePage = () => {
   });
   const [showPasswordForm, setShowPasswordForm] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      setFormData({
-        username: user.username || '',
-        email: user.email || '',
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        phone: user.phone || '',
-        address: user.address || '',
-      });
-    }
-  }, [user]);
+  const initialFormData = useMemo(() => ({
+    username: user?.username || '',
+    email: user?.email || '',
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    phone: user?.phone || '',
+    address: user?.address || '',
+  }), [user]);
+
+  const formData = isEditing ? (draftFormData ?? initialFormData) : initialFormData;
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setDraftFormData(prev => ({ ...(prev ?? initialFormData), [name]: value }));
   };
 
   const handlePasswordChange = (e) => {
@@ -52,6 +42,7 @@ const ProfilePage = () => {
     try {
       await dispatch(updateUserProfile(formData)).unwrap();
       setIsEditing(false);
+      setDraftFormData(null);
     } catch (error) {
       console.error('Failed to update profile:', error);
     }
@@ -97,7 +88,15 @@ const ProfilePage = () => {
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gray-800">Profile Information</h2>
               <button
-                onClick={() => setIsEditing(!isEditing)}
+                onClick={() => {
+                  if (isEditing) {
+                    setIsEditing(false);
+                    setDraftFormData(null);
+                  } else {
+                    setIsEditing(true);
+                    setDraftFormData(initialFormData);
+                  }
+                }}
                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
               >
                 {isEditing ? 'Cancel' : 'Edit Profile'}
@@ -197,7 +196,10 @@ const ProfilePage = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setIsEditing(false)}
+                    onClick={() => {
+                      setIsEditing(false);
+                      setDraftFormData(null);
+                    }}
                     className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
                   >
                     Cancel

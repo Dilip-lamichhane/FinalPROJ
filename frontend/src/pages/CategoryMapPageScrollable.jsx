@@ -5,9 +5,12 @@ import { SignedOut } from '@clerk/clerk-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Fix for default markers
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { fetchSupabaseShops, fetchSupabaseShopProducts } from '../store/slices/shopsSlice';
+
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+import securityPin from '../assets/security-pin_6125244.png';
 
 let DefaultIcon = L.icon({
   iconUrl: icon,
@@ -24,6 +27,12 @@ const CategoryMapPageScrollable = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const category = location.state?.category || 'Local Businesses';
+  const initialSelectedCategory = ['Restaurant', 'Electronics', 'Fitness', 'Health/Medicine', 'Automobile'].includes(category)
+    ? category
+    : 'All';
+  const dispatch = useAppDispatch();
+  const shops = useAppSelector((state) => state.shops.shops);
+  const supabaseCatalog = useAppSelector((state) => state.shops.supabaseCatalog);
   
   // Map states
   const [mapCenter, setMapCenter] = useState([0, 0]);
@@ -35,47 +44,138 @@ const CategoryMapPageScrollable = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState(null);
+  const [isCatalogOpen, setIsCatalogOpen] = useState(false);
+  const [catalogShop, setCatalogShop] = useState(null);
+  const [catalogSearch, setCatalogSearch] = useState('');
+  const [userIcon, setUserIcon] = useState(() => L.icon({
+    iconUrl: securityPin,
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -36]
+  }));
+
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => {
+      const maxSize = 40;
+      const scale = maxSize / Math.max(img.naturalWidth, img.naturalHeight);
+      const width = Math.max(1, Math.round(img.naturalWidth * scale));
+      const height = Math.max(1, Math.round(img.naturalHeight * scale));
+
+      setUserIcon(L.icon({
+        iconUrl: securityPin,
+        iconSize: [width, height],
+        iconAnchor: [Math.round(width / 2), height],
+        popupAnchor: [0, -height + 4]
+      }));
+    };
+    img.src = securityPin;
+  }, []);
   
   // Filter states
   const [productSearch, setProductSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState(category);
+  const [selectedCategory, setSelectedCategory] = useState(initialSelectedCategory);
   const [distanceFilter, setDistanceFilter] = useState(10);
   const [minRating, setMinRating] = useState(0);
   const [sortByRating, setSortByRating] = useState('desc');
   
-  // Sample markers for the selected category
-  const [allMarkers] = useState([
-    { id: 1, name: 'TechZone Electronics', position: [19.0760, 72.8777], rating: 4.8, category: 'Electronics', products: ['iPhone 14', 'Samsung TV', 'Laptop Dell'] },
-    { id: 2, name: 'Green Leaf Restaurant', position: [19.0860, 72.8877], rating: 4.6, category: 'Food', products: ['Pizza Margherita', 'Burger Combo', 'Pasta Alfredo'] },
-    { id: 3, name: 'QuickFix Auto Service', position: [19.0660, 72.8677], rating: 4.7, category: 'Automobile', products: ['Oil Change', 'Brake Repair', 'Tire Rotation'] },
-    { id: 4, name: 'Serenity Spa', position: [19.0960, 72.8977], rating: 4.9, category: 'Health', products: ['Massage Therapy', 'Facial Treatment', 'Aromatherapy'] },
-    { id: 5, name: 'Book Haven Store', position: [19.0560, 72.8577], rating: 4.5, category: 'Books', products: ['Fiction Novels', 'Study Guides', 'Magazines'] },
-    { id: 6, name: 'Fitness Plus Gym', position: [19.1060, 72.9077], rating: 4.4, category: 'Fitness', products: ['Personal Training', 'Yoga Classes', 'Protein Supplements'] }
-  ]);
+  useEffect(() => {
+    const query = productSearch.trim();
+    const delay = query ? 350 : 0;
+    const timeoutId = setTimeout(() => {
+      dispatch(fetchSupabaseShops(query ? { product: query } : {}));
+    }, delay);
+
+    return () => clearTimeout(timeoutId);
+  }, [dispatch, productSearch]);
+
+  useEffect(() => {
+    if (userLocation) return;
+    if (!shops || shops.length === 0) return;
+
+    const first = shops.find((s) => {
+      const lng = Number(s?.location?.coordinates?.[0]);
+      const lat = Number(s?.location?.coordinates?.[1]);
+      return Number.isFinite(lat) && Number.isFinite(lng);
+    });
+
+    if (!first) return;
+
+    const lng = Number(first.location.coordinates[0]);
+    const lat = Number(first.location.coordinates[1]);
+    setMapCenter([lat, lng]);
+    setMapZoom(13);
+  }, [shops, userLocation]);
 
   // Filter and sort markers
-  const filteredMarkers = allMarkers.filter(marker => {
-    // Product search filter
-    const matchesProduct = !productSearch || 
-      marker.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-      marker.products.some(product => product.toLowerCase().includes(productSearch.toLowerCase()));
-    
+  const normalizeCategory = (value) =>
+    String(value ?? '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '')
+      .replace(/&/g, 'and');
+
+  const toSupabaseShopId = (shop) => {
+    const raw = shop?.id ?? shop?._id;
+    if (Number.isFinite(raw)) return Number(raw);
+    const str = String(raw ?? '');
+    if (str.startsWith('sb_')) {
+      const parsed = Number(str.slice(3));
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    const parsed = Number(str);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const openCatalog = (marker) => {
+    if (!marker?.shopId) return;
+    setCatalogShop(marker);
+    setCatalogSearch('');
+    setIsCatalogOpen(true);
+    dispatch(fetchSupabaseShopProducts({ shopId: marker.shopId }));
+  };
+
+  const filteredMarkers = (shops || [])
+    .map((shop) => {
+      const lng = Number(shop?.location?.coordinates?.[0]);
+      const lat = Number(shop?.location?.coordinates?.[1]);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+      const shopId = toSupabaseShopId(shop);
+      if (!shopId) return null;
+
+      return {
+        id: shop._id || shop.id || `${shop.name}-${lat}-${lng}`,
+        shopId,
+        name: shop.name || 'Unnamed Shop',
+        position: [lat, lng],
+        rating: Number(shop.rating ?? shop.averageRating ?? 0) || 0,
+        category: shop.category?.name || shop.category || 'Uncategorized',
+      };
+    })
+    .filter(Boolean)
+    .filter(marker => {
     // Category filter
-    const matchesCategory = selectedCategory === 'All' || marker.category === selectedCategory;
+    const matchesCategory =
+      selectedCategory === 'All' ||
+      normalizeCategory(marker.category) === normalizeCategory(selectedCategory);
     
     // Rating filter
     const matchesRating = marker.rating >= minRating;
     
     // Distance filter (simplified - within range)
     // Calculate a deterministic distance based on marker position for consistent filtering
-    const distanceBase = userLocation || mapCenter;
-    const distance = Math.sqrt(
-      Math.pow(marker.position[0] - distanceBase[0], 2) + 
-      Math.pow(marker.position[1] - distanceBase[1], 2)
-    ) * 100; // Convert to approximate km
-    const matchesDistance = distance <= distanceFilter;
+    const distanceBase = userLocation;
+    const matchesDistance = !distanceBase
+      ? true
+      : Math.sqrt(
+          Math.pow(marker.position[0] - distanceBase[0], 2) +
+            Math.pow(marker.position[1] - distanceBase[1], 2)
+        ) *
+          100 <=
+        distanceFilter;
     
-    return matchesProduct && matchesCategory && matchesRating && matchesDistance;
+    return matchesCategory && matchesRating && matchesDistance;
   }).sort((a, b) => {
     if (sortByRating === 'desc') return b.rating - a.rating;
     return a.rating - b.rating;
@@ -274,13 +374,6 @@ const CategoryMapPageScrollable = () => {
     setMapZoom(prev => Math.max(prev - 1, 3));
   };
 
-  const userIcon = L.divIcon({
-    className: 'user-location-marker',
-    html: '<div class="user-location-dot"></div><div class="user-location-ring"></div>',
-    iconSize: [24, 24],
-    iconAnchor: [12, 12]
-  });
-
   return (
     <div className={`h-screen overflow-hidden ${isDarkMode ? 'bg-gray-900' : 'bg-white'}`}>
       <style dangerouslySetInnerHTML={{__html: `
@@ -354,7 +447,7 @@ const CategoryMapPageScrollable = () => {
           
           {/* Category Markers */}
           {filteredMarkers.map(marker => (
-            <Marker key={marker.id} position={marker.position}>
+            <Marker key={marker.id} position={marker.position} icon={userIcon}>
               <Popup>
                 <div className="p-2">
                   <h3 className="font-bold text-lg">{marker.name}</h3>
@@ -363,6 +456,13 @@ const CategoryMapPageScrollable = () => {
                     <span className="text-yellow-500">★</span>
                     <span className="ml-1 font-semibold">{marker.rating}</span>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => openCatalog(marker)}
+                    className="mt-3 w-full rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                  >
+                    View catalog
+                  </button>
                 </div>
               </Popup>
             </Marker>
@@ -467,10 +567,9 @@ const CategoryMapPageScrollable = () => {
             >
               <option value="All">All Categories</option>
               <option value="Electronics">Electronics</option>
-              <option value="Food">Food</option>
+              <option value="Restaurant">Restaurant</option>
               <option value="Automobile">Automobile</option>
-              <option value="Health">Health</option>
-              <option value="Books">Books</option>
+              <option value="Health/Medicine">Health/Medicine</option>
               <option value="Fitness">Fitness</option>
             </select>
           </div>
@@ -586,6 +685,103 @@ const CategoryMapPageScrollable = () => {
             
           </div>
         </div>
+
+        {isCatalogOpen && catalogShop && (
+          <div
+            className={`absolute right-4 top-4 bottom-4 w-96 rounded-xl shadow-2xl z-10 flex flex-col backdrop-blur-sm transition-colors duration-300 ${
+              isDarkMode ? 'bg-gray-900/95' : 'bg-white/95'
+            }`}
+          >
+            <div className={`p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Catalog</div>
+                  <div className={`text-lg font-semibold truncate ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                    {catalogShop.name}
+                  </div>
+                  <div className={`text-xs truncate ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {catalogShop.category}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCatalogOpen(false);
+                    setCatalogShop(null);
+                    setCatalogSearch('');
+                  }}
+                  className={`rounded-lg px-3 py-2 text-sm ${
+                    isDarkMode ? 'bg-gray-800 text-gray-200 hover:bg-gray-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="mt-4 relative">
+                <input
+                  type="text"
+                  value={catalogSearch}
+                  onChange={(e) => setCatalogSearch(e.target.value)}
+                  placeholder="Search items in this shop..."
+                  className={`w-full px-4 py-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-300 ${
+                    isDarkMode
+                      ? 'bg-gray-800 border-gray-600 text-gray-100 placeholder-gray-400'
+                      : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-500'
+                  }`}
+                />
+                <div className={`absolute right-2 top-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+              {supabaseCatalog.loadingByShopId?.[String(catalogShop.shopId)] ? (
+                <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Loading catalog...</div>
+              ) : supabaseCatalog.errorByShopId?.[String(catalogShop.shopId)] ? (
+                <div className={`text-sm ${isDarkMode ? 'text-red-300' : 'text-red-600'}`}>
+                  {supabaseCatalog.errorByShopId[String(catalogShop.shopId)]}
+                </div>
+              ) : (
+                (() => {
+                  const all = supabaseCatalog.byShopId?.[String(catalogShop.shopId)] || [];
+                  const q = catalogSearch.trim().toLowerCase();
+                  const filtered = !q ? all : all.filter((p) => String(p?.name ?? '').toLowerCase().includes(q));
+                  if (filtered.length === 0) {
+                    return (
+                      <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                        No items found.
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-2">
+                      {filtered.map((p) => (
+                        <div
+                          key={p.id || `${p.name}-${p.price}`}
+                          className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 ${
+                            isDarkMode ? 'border-gray-700 bg-gray-800/40' : 'border-gray-200 bg-white'
+                          }`}
+                        >
+                          <div className={`text-sm font-medium ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                            {p.name}
+                          </div>
+                          <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                            ₹{Number(p.price || 0).toLocaleString()}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()
+              )}
+            </div>
+          </div>
+        )}
         
         {/* Sign In Button - Top Right */}
         <SignedOut>

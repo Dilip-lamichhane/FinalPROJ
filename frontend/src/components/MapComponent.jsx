@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { setMapInstance, setUserLocation, setCenter, setZoom, setMarkers, setSelectedShop, setRadiusCircle } from '../store/slices/mapSlice';
+import { setMapInstance, setCenter, setZoom, setMarkers, setSelectedShop, setRadiusCircle } from '../store/slices/mapSlice';
 import { setCurrentShop } from '../store/slices/shopsSlice';
 import ShopCard from './ShopCard';
 import PropTypes from 'prop-types';
+import placeholderIcon from '../assets/placeholder.png';
 
 const MapComponent = ({ shops, onShopSelect, className = '' }) => {
   const dispatch = useAppDispatch();
@@ -140,13 +141,7 @@ const MapComponent = ({ shops, onShopSelect, className = '' }) => {
         map: mapInstance,
         title: shop.name,
         icon: {
-          url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="40" viewBox="0 0 30 40">
-              <path fill="#3B82F6" stroke="#1E40AF" stroke-width="2" d="M15 0C6.716 0 0 6.716 0 15c0 8.284 15 25 15 25s15-16.716 15-25C30 6.716 23.284 0 15 0z"/>
-              <circle fill="white" cx="15" cy="15" r="8"/>
-              <text x="15" y="19" text-anchor="middle" font-size="12" fill="#3B82F6" font-weight="bold">S</text>
-            </svg>
-          `),
+          url: placeholderIcon,
           scaledSize: new window.google.maps.Size(30, 40),
           anchor: new window.google.maps.Point(15, 40)
         }

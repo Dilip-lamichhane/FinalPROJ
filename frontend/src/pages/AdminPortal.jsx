@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useUser, UserButton } from '@clerk/clerk-react';
-import { useTheme } from '../contexts/ThemeContext.jsx';
+import { UserButton } from '@clerk/clerk-react';
+import { useTheme } from '../contexts/themeContext';
 import ThemeToggle from '../components/ThemeToggle.jsx';
 import { 
   ChevronRight, 
@@ -278,7 +278,7 @@ const Collapsible = ({ children, defaultOpen = false, className = '', ...props }
 };
 
 const CollapsibleTrigger = ({ children, isOpen, setIsOpen, className = '', ...props }) => {
-  const { asChild, ...domProps } = props;
+  const { asChild: _asChild, ...domProps } = props;
   return (
     <div onClick={() => setIsOpen(!isOpen)} className={`cursor-pointer ${className}`} {...domProps}>
       {children}
@@ -288,7 +288,7 @@ const CollapsibleTrigger = ({ children, isOpen, setIsOpen, className = '', ...pr
 
 const CollapsibleContent = ({ children, isOpen, className = '', ...props }) => {
   if (!isOpen) return null;
-  const { asChild, ...domProps } = props;
+  const { asChild: _asChild, ...domProps } = props;
   return (
     <div className={className} {...domProps}>
       {children}
@@ -296,16 +296,13 @@ const CollapsibleContent = ({ children, isOpen, className = '', ...props }) => {
   );
 };
 
-const NavUser = ({ user, isOpen: parentIsOpen, setIsOpen: parentSetIsOpen, ...props }) => {
+const NavUser = ({ user, isOpen: parentIsOpen, setIsOpen: parentSetIsOpen }) => {
   const [isOpen, setIsOpen] = useState(false);
   const { isSidebarCollapsed } = useTheme();
   
   // Use local state, ignore parent props if they exist
   const localIsOpen = parentIsOpen !== undefined ? parentIsOpen : isOpen;
   const localSetIsOpen = parentSetIsOpen !== undefined ? parentSetIsOpen : setIsOpen;
-  
-  // Filter out any remaining custom props
-  const { asChild, ...domProps } = props;
   
   return (
     <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
@@ -683,10 +680,57 @@ const recentSales = [
   { name: 'Sofia Davis', email: 'sofia.davis@email.com', amount: '+$39.00' }
 ];
 
+const usersData = [
+  {
+    id: 1,
+    name: 'John Doe',
+    email: 'john.doe@example.com',
+    role: 'Admin',
+    status: 'Active',
+    lastActive: '2 hours ago',
+    avatar: 'JD'
+  },
+  {
+    id: 2,
+    name: 'Jane Smith',
+    email: 'jane.smith@example.com',
+    role: 'User',
+    status: 'Active',
+    lastActive: '5 minutes ago',
+    avatar: 'JS'
+  },
+  {
+    id: 3,
+    name: 'Bob Johnson',
+    email: 'bob.johnson@example.com',
+    role: 'User',
+    status: 'Inactive',
+    lastActive: '3 days ago',
+    avatar: 'BJ'
+  },
+  {
+    id: 4,
+    name: 'Alice Brown',
+    email: 'alice.brown@example.com',
+    role: 'Moderator',
+    status: 'Active',
+    lastActive: '1 hour ago',
+    avatar: 'AB'
+  },
+  {
+    id: 5,
+    name: 'Charlie Wilson',
+    email: 'charlie.wilson@example.com',
+    role: 'User',
+    status: 'Active',
+    lastActive: '30 minutes ago',
+    avatar: 'CW'
+  }
+];
+
 // Admin Portal Component
 const AdminPortal = () => {
-  const { user } = useUser();
-  const { theme, toggleTheme, isSidebarCollapsed, toggleSidebar, isDark } = useTheme();
+  const { isSidebarCollapsed, toggleSidebar } = useTheme();
   const [activeTab, setActiveTab] = useState('overview');
   const [offset, setOffset] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -695,15 +739,8 @@ const AdminPortal = () => {
   const [statsData, setStatsData] = useState(stats);
   const [error, setError] = useState(null);
 
-  // Debug effect to monitor theme changes
-  useEffect(() => {
-    console.log('AdminPortal - Current theme:', theme);
-    console.log('AdminPortal - Document classes:', document.documentElement.classList.toString());
-    console.log('AdminPortal - isDark:', isDark);
-  }, [theme, isDark]);
-
   // Mock API functions with error handling
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -726,9 +763,9 @@ const AdminPortal = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -751,7 +788,7 @@ const AdminPortal = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Load data when tab changes
   useEffect(() => {
@@ -760,7 +797,7 @@ const AdminPortal = () => {
     } else if (activeTab === 'overview') {
       fetchStats();
     }
-  }, [activeTab]);
+  }, [activeTab, fetchUsers, fetchStats]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -769,57 +806,6 @@ const AdminPortal = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  // Dummy data for admin dashboard (using external data definitions)
-
-  // Dummy data for users table
-  const usersData = [
-    {
-      id: 1,
-      name: 'John Doe',
-      email: 'john.doe@example.com',
-      role: 'Admin',
-      status: 'Active',
-      lastActive: '2 hours ago',
-      avatar: 'JD'
-    },
-    {
-      id: 2,
-      name: 'Jane Smith',
-      email: 'jane.smith@example.com',
-      role: 'User',
-      status: 'Active',
-      lastActive: '5 minutes ago',
-      avatar: 'JS'
-    },
-    {
-      id: 3,
-      name: 'Bob Johnson',
-      email: 'bob.johnson@example.com',
-      role: 'User',
-      status: 'Inactive',
-      lastActive: '3 days ago',
-      avatar: 'BJ'
-    },
-    {
-      id: 4,
-      name: 'Alice Brown',
-      email: 'alice.brown@example.com',
-      role: 'Moderator',
-      status: 'Active',
-      lastActive: '1 hour ago',
-      avatar: 'AB'
-    },
-    {
-      id: 5,
-      name: 'Charlie Wilson',
-      email: 'charlie.wilson@example.com',
-      role: 'User',
-      status: 'Active',
-      lastActive: '30 minutes ago',
-      avatar: 'CW'
-    }
-  ];
 
   const topNav = [
     { title: 'Overview', href: 'overview', isActive: activeTab === 'overview' },

@@ -3,6 +3,62 @@
 ## Project Overview
 **KhojHub** is a comprehensive location-based business discovery platform that connects customers with local businesses through radius-based search, real-time product availability, and community-driven reviews. The platform features a modern React frontend with Redux state management, Express.js backend API, and both MongoDB and Supabase database integrations.
 
+## ✅ Latest Update (2026-02-16) — Supabase Map + Product Availability + Catalog UI
+
+### What Was Implemented
+- **Custom map marker icon**: Leaflet map markers use `frontend/src/assets/security-pin_6125244.png` with aspect-ratio-preserving sizing (no stretching).
+- **Supabase shops plotted on the map**: Frontend fetches shops from Supabase (lat/lng) and renders them as markers on `/map`.
+- **Category filtering for Supabase markers**: Selecting a category filters markers by shop category (`Restaurant`, `Electronics`, `Fitness`, `Health/Medicine`, `Automobile`). Default shows all.
+- **DB-backed product search (availability filter)**: The “Search Products” input now queries Supabase via backend, and the map only shows shops that actually carry the searched item.
+- **Per-shop catalog viewer**: Clicking a shop marker → “View catalog” opens a right-side catalog panel listing items for that shop, with in-panel catalog search.
+
+### Backend Changes (Supabase API)
+Updated endpoint behavior in `backend/routes/supabase.js`:
+- `GET /api/v1/supabase/shops`
+  - Supports pagination: `?limit=&offset=`
+  - Supports category filter: `?category=Restaurant`
+  - Supports product availability filter: `?product=mouse`
+    - When `product` is provided, backend searches `products` first, finds matching `shop_id`s, then returns only those shops.
+- `GET /api/v1/supabase/shops/:shopId/products`
+  - Returns shop’s catalog (Supabase `products`) for a given `shop_id`
+  - Supports search: `?q=thermometer`
+
+### Frontend Changes (Leaflet /map page)
+Updated `frontend/src/pages/CategoryMapPageScrollable.jsx`:
+- Shops are fetched from Supabase through Redux thunk `fetchSupabaseShops`.
+- Product search now filters via DB (Supabase) instead of filtering by marker name.
+- “View catalog” in marker popup loads products for that shop and renders them in a sidebar.
+- Map centers on first shop if user location is unavailable, so markers are visible even without geolocation permission.
+
+### Supabase Seeder Changes (Realistic Catalog Distribution)
+Updated `supabase-seeder.js` to match realistic shop catalogs:
+- **10–15 products per shop** (variable)
+- About **~70% common items** shared across shops within the same category
+- Some items are **rare/unique** (only available in **1–2 shops**)
+- Not every shop has every item even within the same category
+
+This makes product availability search meaningful: searching an item reduces the marker set to only shops that carry it.
+
+### How To Test This Feature Set
+1. Ensure Supabase schema exists:
+   - `node check-schema.js` (from repo root)
+2. Seed Supabase:
+   - `npm run seed` (from repo root)
+3. Start backend:
+   - `npm install` then `npm run dev` (from `backend/`)
+4. Start frontend:
+   - `npm install` then `npm run dev` (from `frontend/`)
+5. Open:
+   - `http://localhost:5173/map`
+6. Try:
+   - Search Products: `Mouse`, `Thermometer`, `Engine Oil`, `Yoga Mat`
+   - Click marker → “View catalog” → search inside catalog
+
+### Known Improvement Areas (Planned / Recommended)
+- **Do not hardcode Supabase keys** in `supabase-seeder.js` and `check-schema.js`; move them to environment variables.
+- Add a dedicated backend endpoint for “product search suggestions” (autocomplete) if needed.
+- Add a loading indicator on the map for “shops are being filtered by product”.
+
 ## 🏗️ Complete Architecture Overview
 
 ### Frontend Stack
@@ -10,7 +66,7 @@
 - **State Management**: Redux Toolkit with async thunks
 - **Styling**: Tailwind CSS 4.1.18 with mobile-first responsive design
 - **Authentication**: Clerk authentication with JWT tokens
-- **Maps**: Google Maps API integration with geospatial queries
+- **Maps**: Leaflet (implemented for `/map`) + Google Maps API integration (planned/partial elsewhere)
 - **UI Components**: Custom shadcn-admin inspired components
 - **Charts**: Recharts for data visualization
 - **Icons**: Lucide React icons
@@ -195,11 +251,12 @@ KhojHub/
 ## 📊 Data Statistics
 
 ### Supabase Database (Seeded)
-- **20 Shops** across 10 different categories
-- **200 Products** (10 products per shop)
-- **10 Categories**: Restaurant, Electronics, Fitness, Health/Medicine, Automobile, Grocery, Clothing, Books, Pet Supplies, Gardening
-- **Geographic Coverage**: All shops located in Lalitpur area
-- **PostGIS Integration**: Full spatial data support
+- **50 Shops** across 5 business categories
+- **~500 Products** total (10–15 products per shop; variable)
+- **Categories**: Restaurant, Electronics, Fitness, Health/Medicine, Automobile
+- **Catalog realism**: ~70% common items within category + some unique/rare items per shop
+- **Geographic Coverage**: Shops distributed around Lalitpur/Kathmandu area coordinates (demo data)
+- **PostGIS Integration**: Location stored as `GEOGRAPHY(POINT, 4326)` compatible representation
 
 ### MongoDB Schema
 - **User Model**: Complete user profile with authentication
@@ -211,7 +268,7 @@ KhojHub/
 ## 🚀 Development Environment
 
 ### Frontend Development
-- **Server**: Vite dev server on http://localhost:5174/
+- **Server**: Vite dev server on http://localhost:5173/
 - **Hot Reload**: Instant code changes without refresh
 - **Linting**: ESLint configured for code quality
 - **Build**: Production-optimized builds with Vite
@@ -261,6 +318,9 @@ KhojHub/
 - [x] Theme system with dark/light mode
 - [x] Redux store with all necessary slices
 - [x] Supabase database seeding with expanded data
+- [x] Leaflet `/map` page with Supabase markers + category filter
+- [x] DB-backed product availability filtering on map
+- [x] Shop catalog sidebar with in-panel search
 - [x] MongoDB schema design and models
 - [x] Build system optimization and error resolution
 
@@ -310,7 +370,7 @@ KhojHub/
 
 ---
 
-**Last Updated**: 2026-02-12  
+**Last Updated**: 2026-02-16  
 **Project Status**: Active Development  
 **Version**: 1.0.0  
 **Team**: KhojHub Development Team  

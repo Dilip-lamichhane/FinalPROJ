@@ -1,8 +1,13 @@
-const { createClient } = require('@supabase/supabase-js');
+let createClient;
+try {
+  ({ createClient } = require('@supabase/supabase-js'));
+} catch (error) {
+  ({ createClient } = require('./backend/node_modules/@supabase/supabase-js'));
+}
 
 // Supabase configuration
-const SUPABASE_URL = 'https://qbimoqxwrcqamnghiear.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFiaW1vcXh3cmNxYW1uZ2hpZWFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NzQ4ODIsImV4cCI6MjA4NjQ1MDg4Mn0.EV4ZIxOVFZwy4aL1kfUO8imV4S_tZ8Hb5p8SEHtvI1E';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://qbimoqxwrcqamnghiear.supabase.co';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFiaW1vcXh3cmNxYW1uZ2hpZWFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NzQ4ODIsImV4cCI6MjA4NjQ1MDg4Mn0.EV4ZIxOVFZwy4aL1kfUO8imV4S_tZ8Hb5p8SEHtvI1E';
 
 // Expanded raw data with additional shops and products
 const rawData = [

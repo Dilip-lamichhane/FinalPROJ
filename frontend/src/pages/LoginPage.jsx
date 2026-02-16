@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { SignIn, useUser, useAuth } from '@clerk/clerk-react';
+import { SignIn, useUser } from '@clerk/clerk-react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { syncUserWithBackend, clearError } from '../store/slices/authSlice';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -10,7 +10,6 @@ const LoginPage = () => {
   const location = useLocation();
   const dispatch = useAppDispatch();
   const { isSignedIn, user: clerkUser, isLoaded } = useUser();
-  const { getToken } = useAuth();
   
   const { isLoading, error } = useAppSelector((state) => state.auth);
 

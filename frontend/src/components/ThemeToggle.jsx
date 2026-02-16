@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTheme } from '../contexts/ThemeContext.jsx';
+import { useTheme } from '../contexts/themeContext';
 
 // Sun Icon for dark mode
 const Sun = ({ className = '' }) => (
@@ -46,7 +46,7 @@ const Moon = ({ className = '' }) => (
 );
 
 const ThemeToggle = ({ className = '' }) => {
-  const { theme, toggleTheme, isDark } = useTheme();
+  const { toggleTheme, isDark } = useTheme();
 
   return (
     <button

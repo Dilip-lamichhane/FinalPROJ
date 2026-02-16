@@ -23,6 +23,7 @@ const shopRoutes = require('./routes/shops');
 const productRoutes = require('./routes/products');
 const reviewRoutes = require('./routes/reviews');
 const categoryRoutes = require('./routes/categories');
+const supabaseRoutes = require('./routes/supabase');
 
 // Routes
 app.get('/api/v1/health', (req, res) => {
@@ -40,6 +41,7 @@ app.use('/api/v1/shops', shopRoutes);
 app.use('/api/v1/products', productRoutes);
 app.use('/api/v1/reviews', reviewRoutes);
 app.use('/api/v1/categories', categoryRoutes);
+app.use('/api/v1/supabase', supabaseRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

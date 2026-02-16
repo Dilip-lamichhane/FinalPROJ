@@ -14,6 +14,62 @@ const SearchBar = ({ onSearch, className = '' }) => {
   const [showFilters, setShowFilters] = useState(false);
   const searchInputRef = useRef(null);
 
+  const getCurrentLocation = useCallback(async () => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser');
+      return;
+    }
+
+    dispatch(setLoading(true));
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+          );
+          const data = await response.json();
+          
+          dispatch(setUserLocation({
+            lat: latitude,
+            lng: longitude,
+            address: data.display_name || 'Current Location'
+          }));
+
+          await dispatch(searchShops({
+            lat: latitude,
+            lng: longitude,
+            radius: filters.distance || searchRadius,
+            page: 1,
+            limit: 10
+          })).unwrap();
+
+        } catch (error) {
+          console.error('Failed to get address:', error);
+          dispatch(setUserLocation({
+            lat: latitude,
+            lng: longitude,
+            address: 'Current Location'
+          }));
+        }
+        
+        dispatch(setLoading(false));
+      },
+      (error) => {
+        dispatch(setLoading(false));
+        console.error('Geolocation error:', error);
+        alert('Unable to get your location. Please enable location services.');
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000
+      }
+    );
+  }, [dispatch, filters.distance, searchRadius]);
+
   const handleSearch = useCallback(async (e) => {
     e.preventDefault();
     
@@ -48,65 +104,7 @@ const SearchBar = ({ onSearch, className = '' }) => {
     } finally {
       dispatch(setLoading(false));
     }
-  }, [localQuery, userLocation, filters, searchRadius, dispatch, onSearch]);
-
-  const getCurrentLocation = async () => {
-    if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser');
-      return;
-    }
-
-    dispatch(setLoading(true));
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        
-        // Get address from coordinates (reverse geocoding)
-        try {
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
-          );
-          const data = await response.json();
-          
-          dispatch(setUserLocation({
-            lat: latitude,
-            lng: longitude,
-            address: data.display_name || 'Current Location'
-          }));
-
-          // Trigger search with new location
-          await dispatch(searchShops({
-            lat: latitude,
-            lng: longitude,
-            radius: filters.distance || searchRadius,
-            page: 1,
-            limit: 10
-          })).unwrap();
-
-        } catch (error) {
-          console.error('Failed to get address:', error);
-          dispatch(setUserLocation({
-            lat: latitude,
-            lng: longitude,
-            address: 'Current Location'
-          }));
-        }
-        
-        dispatch(setLoading(false));
-      },
-      (error) => {
-        dispatch(setLoading(false));
-        console.error('Geolocation error:', error);
-        alert('Unable to get your location. Please enable location services.');
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 300000 // 5 minutes
-      }
-    );
-  };
+  }, [localQuery, userLocation, filters, searchRadius, dispatch, onSearch, getCurrentLocation]);
 
   const handleFilterChange = (filterType, value) => {
     dispatch(setFilters({ ...filters, [filterType]: value }));
